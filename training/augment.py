@@ -14,11 +14,9 @@ https://github.com/NVlabs/stylegan2-ada/blob/main/training/augment.py"""
 import numpy as np
 import scipy.signal
 import torch
-from torch_utils import persistence
-from torch_utils import misc
-from torch_utils.ops import upfirdn2d
-from torch_utils.ops import grid_sample_gradfix
-from torch_utils.ops import conv2d_gradfix
+
+from torch_utils import misc, persistence
+from torch_utils.ops import conv2d_gradfix, grid_sample_gradfix, upfirdn2d
 
 #----------------------------------------------------------------------------
 # Coefficients of various wavelet decomposition low-pass filters.
@@ -121,11 +119,39 @@ def rotate2d_inv(theta, **kwargs):
 @persistence.persistent_class
 class AugmentPipe(torch.nn.Module):
     def __init__(self,
-        xflip=0, rotate90=0, xint=0, xint_max=0.125,
-        scale=0, rotate=0, aniso=0, xfrac=0, scale_std=0.2, rotate_max=1, aniso_std=0.2, xfrac_std=0.125,
-        brightness=0, contrast=0, lumaflip=0, hue=0, saturation=0, brightness_std=0.2, contrast_std=0.5, hue_max=1, saturation_std=1,
-        imgfilter=0, imgfilter_bands=[1,1,1,1], imgfilter_std=1,
-        noise=0, cutout=0, noise_std=0.1, cutout_size=0.5,
+        # Pixel blitting.
+        xflip=0, 
+        rotate90=0, 
+        xint=0, 
+        xint_max=0.125,
+        # General geometric transformations.
+        scale=0, 
+        rotate=0, 
+        aniso=0, 
+        xfrac=0, 
+        scale_std=0.2, 
+        rotate_max=1, 
+        aniso_std=0.2, 
+        xfrac_std=0.125,
+        # Color transformations.
+        brightness=0, 
+        contrast=0, 
+        lumaflip=0, 
+        hue=0, 
+        saturation=0, 
+        brightness_std=0.2, 
+        contrast_std=0.5, 
+        hue_max=1, 
+        saturation_std=1,
+        # Image-space filtering.
+        imgfilter=0, 
+        imgfilter_bands=[1,1,1,1], 
+        imgfilter_std=1,
+        # Image-space corruptions.
+        noise=0, 
+        cutout=0, 
+        noise_std=0.1, 
+        cutout_size=0.5,
     ):
         super().__init__()
         self.register_buffer('p', torch.ones([]))       # Overall multiplier for augmentation probability.
