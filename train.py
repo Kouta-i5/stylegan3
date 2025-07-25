@@ -9,18 +9,18 @@
 """Train a GAN using the techniques described in the paper
 "Alias-Free Generative Adversarial Networks"."""
 
-import os
-import click
-import re
 import json
+import os
+import re
 import tempfile
+
+import click
 import torch
 
 import dnnlib
-from training import training_loop
 from metrics import metric_main
-from torch_utils import training_stats
-from torch_utils import custom_ops
+from torch_utils import custom_ops, training_stats
+from training import training_loop
 
 #----------------------------------------------------------------------------
 
@@ -252,7 +252,50 @@ def main(**kwargs):
 
     # Augmentation.
     if opts.aug != 'noaug':
-        c.augment_kwargs = dnnlib.EasyDict(class_name='training.augment.AugmentPipe', xflip=1, rotate90=1, xint=1, scale=1, rotate=1, aniso=1, xfrac=1, brightness=1, contrast=1, lumaflip=1, hue=1, saturation=1)
+        # 医療画像に適した限定されたデータ拡張
+        c.augment_kwargs = dnnlib.EasyDict(
+            class_name='training.augment.AugmentPipe',
+            # xflip=1, 
+            # rotate90=1, 
+            # xint=1, 
+            # scale=1, 
+            # rotate=1, 
+            # aniso=1, 
+            # xfrac=1, 
+            # brightness=1, 
+            # contrast=1, 
+            # lumaflip=1, 
+            # hue=1, 
+            # saturation=1
+            # ピクセルブリッティング - 水平反転のみ有効（左右反転は許容範囲）
+            xflip=1, 
+            rotate90=0,  # 90度回転は解剖学的整合性を崩すため無効（1→0）
+            xint=0.5,    # 整数移動を0.5に調整（表の推奨設定）（1→0.5）
+            xint_max=0.02,  # 画像寸法の2%程度に制限（0.125→0.02）
+            
+            # 幾何学的変換
+            scale=0.3,        # 等方性スケーリング（30%確率）（1→0.3）
+            rotate=1.0,       # 回転（有効）（0→1）
+            aniso=0.0,        # 異方性スケーリング（無効）（1→0）
+            xfrac=0.0,        # 分数移動（無効）（0→0）
+            scale_std=0.1,    # スケーリングの標準偏差（±10%程度）（0.2→0.1）
+            rotate_max=0.083, # 回転角度を±15度に制限（1→0.083）
+            
+            # 色変換
+            brightness=0.2,   # 明度調整（20%確率）（1→0.2）
+            contrast=0.2,     # コントラスト調整（20%確率）（1→0.2）
+            lumaflip=0.0,     # ルマ反転（無効）（1→0）
+            hue=0.0,          # 色相回転（無効）（1→0）
+            saturation=0.0,   # 彩度調整（無効）（1→0）
+            brightness_std=0.1,  # 明度調整の標準偏差（0.2→0.1）
+            contrast_std=0.2,    # コントラスト調整の標準偏差（0.5→0.2）
+            
+            # フィルタリング・破損
+            imgfilter=0.0,    # 周波数フィルタリング（無効）（1→0）
+            noise=0.2,        # ノイズ（20%確率）（1→0.2）
+            noise_std=0.02,   # ノイズの標準偏差（0.1→0.02）
+            cutout=0.0        # カットアウト（無効）（1→0）
+        )
         if opts.aug == 'ada':
             c.ada_target = opts.target
         if opts.aug == 'fixed':
